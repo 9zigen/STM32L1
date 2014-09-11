@@ -18,7 +18,6 @@
   ******************************************************************************  
   */ 
 
-
 //STM32L100RCT6-Discovery - clock correction function - SYSCLK = 32MHz, HSI. 
 void clockCorrection()
 {
