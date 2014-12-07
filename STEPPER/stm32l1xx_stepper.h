@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * @file    stm32l1xx_stepper.c
+  * @file    stm32l1xx_stepper.h
   * @author  Domen Jurkovic
   * @version V1
   * @date    7-December-2014
