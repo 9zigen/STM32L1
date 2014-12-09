@@ -1,9 +1,9 @@
-/**
+
   ******************************************************************************
   * @file    stm32l1xx_stepper.c
   * @author  Domen Jurkovic
-  * @version V1
-  * @date    7-December-2014
+  * @version V1.2
+  * @date    9-December-2014
   * @brief   This file provides functions to manage the
   *          2 and/or 4 pin stepper motor
   *           
@@ -24,19 +24,17 @@
 					motor_pin_3 = GPIO_Pin_6;
 					motor_pin_4_bank = GPIOA;
 					motor_pin_4 = GPIO_Pin_7;
-	
+					
+					//define number of steps per output shaft revolution(including gear ratio)
+					steps_per_revolution = 4067;	
+						Note:  4076 is default for 28YBJ-48
+					
 					// if 4 pin motor is used, you can use half-stepping:
 					use_half_step = USE_HALF_STEP;
 					
 					// define if last motor step state is preserved for one extra step delay time or reseted imediately. 
 					maintain_position = DONT_MAINTAIN_POS;	
 						Note: useful feature when heavy load(flywheel or some heavy gears) are used.
-		
-		(#) Define stepper parameters in stm32l1xx_stepper.h: 
-			#define STEPS_PER_MOTOR_REVOLUTION	4076	// 4076 is default for 28YBJ-48
-			#define EXTERNAL_GEAR_RATIO					1		// ratio of external gear
-			#define CW_CORRECTION_PULSES				0		// number of correction pulses when moving clock-wise
-			#define CCW_CORRECTION_PULSES				0		// number of correction pulses when moving counter-clock-wise
 		
 		(#) Init stepper: 
 			- stepperInit_2pin(stepper_struct* current_stepper);
@@ -45,6 +43,10 @@
 		(#) Set stepper speed: [pulses per second] (up to 1000 for 28YBJ-48)
 			- setSpeed(&stepper, 500);	
 				
+		(#)	If needed set (after init()!): 
+			- correction_pulses = ___;
+					This is number of steps before output shaft actually moves. The same for any direction.
+		
 		(#) Move methods: 
 			- step(&stepper, 500);	
 				Move stepper for 500 steps CW. -500 = CCW; 
@@ -54,17 +56,17 @@
 			
 			- moveToTargetPosOptimally(&stepper); 
 				Move to target_step_number optimally - by calculating the shortest way to reach target_step_number. 
-				target_step_number therefore must be in range from -(HALF_OF_STEPS_PER_REVOLUTION-1) to +HALF_OF_STEPS_PER_REVOLUTION;
-					Note: use setHomePosition() or target_step_number = 0; to avoid out-of-range parameters.
+				target_step_number therefore must be in range from -((steps_per_revolution/2)-1) to +(steps_per_revolution/2);
+					Note: use setHomePos() or target_step_number = 0; to avoid out-of-range parameters.
 				target_step_number can be changed in some interrupt routine. 
 				
 				
 		(#) Other set&move methods:
-			- setHomePosition(stepper_struct* current_stepper);			
+			- setHomePos(stepper_struct* current_stepper);			
 				Set home position. Current step number is new "home" or zero position. All target step numbers 
 				are calculated from that point. 
 			
-			- moveToHomePosition(stepper_struct* current_stepper);		
+			- moveToHomePos(stepper_struct* current_stepper);		
 				Move back to home position. 
 					Note: To move back home optimally, set 
 						target_step_number = 0;
@@ -89,14 +91,13 @@ uint8_t TIM3_update_flag = 0;
 void stepperInit_2pin(stepper_struct* current_stepper)
 {
   // set default values in current_stepper struct
-	current_stepper->step_number = 0;						// which step the motor is on
-  current_stepper->direction = DIRECTION_CW;	// motor direction
-  current_stepper->use_half_step = 0; 				// 1 when the StepperEx motor is to be driven with half steps (only 4-wire)	
-	setSpeed(current_stepper, DEFAULT_PPS);			// set default pulsesPerSecond
-	current_stepper->current_step_number = 0;		// set default home position to current position = 0;
-	current_stepper->target_step_number = 0;		// set default target position to be the same as home position = 0;
-	current_stepper->home_position = 0;					// set default home position
-	current_stepper->steps_per_revolution = STEPS_PER_REVOLUTION;		// default steps in one output shaft rotation
+	current_stepper->step_number = 0;							// which step the motor is on
+  current_stepper->direction = DIRECTION_CW;		// motor direction
+  current_stepper->use_half_step = 0; 					// 1 when the stepper motor is to be driven with half steps (only 4-wire)	
+	setSpeed(current_stepper, DEFAULT_PPS);				// set default pulsesPerSecond
+	current_stepper->current_step_number = 0;			// set default current position to home position = 0;
+	current_stepper->target_step_number = 0;			// set default target position to be the same as home position = 0;
+	current_stepper->correction_pulses = 0;				// number of correction pulses - number of steps before output shaft actually moves
 	
 	// setup the pins on the microcontroller:
   gpio_pinSetup(current_stepper->motor_pin_1_bank, current_stepper->motor_pin_1, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_DOWN, GPIO_Speed_40MHz);
@@ -115,14 +116,13 @@ void stepperInit_2pin(stepper_struct* current_stepper)
 void stepperInit_4pin(stepper_struct* current_stepper)
 {
 	// set default values in current_stepper struct
-	current_stepper->step_number = 0;						// which step the motor is on
-  current_stepper->direction = DIRECTION_CW;	// motor direction
-	setSpeed(current_stepper, DEFAULT_PPS);			// set default pulsesPerSecond
-	current_stepper->current_step_number = 0;		// set default home position to current position = 0;
-	current_stepper->target_step_number = 0;		// set default target position to be the same as home position = 0;
-	current_stepper->home_position = 0;					// set default home position
-	current_stepper->steps_per_revolution = STEPS_PER_REVOLUTION;		// default steps in one output shaft rotation
-  		
+	current_stepper->step_number = 0;							// which step the motor is on
+  current_stepper->direction = DIRECTION_CW;		// motor direction
+	setSpeed(current_stepper, DEFAULT_PPS);				// set default pulsesPerSecond
+	current_stepper->current_step_number = 0;			// set default home position to current position = 0;
+	current_stepper->target_step_number = 0;			// set default target position to be the same as home position = 0;
+	current_stepper->correction_pulses = 0;				// number of correction pulses - number of steps before output shaft actually moves
+	
   // setup the pins on the microcontroller:
   gpio_pinSetup(current_stepper->motor_pin_1_bank, current_stepper->motor_pin_1, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_DOWN, GPIO_Speed_40MHz);
 	gpio_pinSetup(current_stepper->motor_pin_2_bank, current_stepper->motor_pin_2, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_DOWN, GPIO_Speed_40MHz);
@@ -134,7 +134,7 @@ void stepperInit_4pin(stepper_struct* current_stepper)
 	GPIO_ResetBits(current_stepper->motor_pin_3_bank, current_stepper->motor_pin_3);
 	GPIO_ResetBits(current_stepper->motor_pin_4_bank, current_stepper->motor_pin_4);
 	
-  // pin_count is used by the stepMotor() method:
+  // pin_count is used by the stepMotor():
   current_stepper->pin_count = 4;
 	if(current_stepper->use_half_step == USE_HALF_STEP)
 	{
@@ -242,11 +242,10 @@ void step(stepper_struct* current_stepper, int steps_to_move)
 			stepMotor(current_stepper, current_stepper->step_number % 4);
 		}
 		
-		// step delay
+		// create step delay
 		TIM3_update_flag = 0;
 		TIM_SetAutoreload(TIM3, current_stepper->stepper_speed);	//set period
 		TIM_SetCounter(TIM3, 0);
-			
 		TIM_Cmd(TIM3, ENABLE);
 		while(TIM3_update_flag != 1);
 		TIM_Cmd(TIM3, DISABLE);
@@ -279,10 +278,10 @@ void moveToTargetPos(stepper_struct* current_stepper)
 	
 	while (steps_to_move != 0){
 		if(steps_to_move >= 0){
-			steps_to_move += CW_CORRECTION_PULSES;
+			steps_to_move += current_stepper->correction_pulses;
 		}
 		else{
-			steps_to_move -= CCW_CORRECTION_PULSES;
+			steps_to_move -= current_stepper->correction_pulses;
 		}
 
 		if (steps_to_move > 0) // determine direction based on whether steps_to_move is + or -:
@@ -350,7 +349,7 @@ void moveToTargetPos(stepper_struct* current_stepper)
 
 /* 
 * Blocking move function. Allow change of target position, move optimally
-* range: from -(HALF_OF_STEPS_PER_REVOLUTION-1) to +HALF_OF_STEPS_PER_REVOLUTION;
+* range: from -((steps_per_revolution/2)-1) to +(steps_per_revolution/2);
 */
 void moveToTargetPosOptimally(stepper_struct* current_stepper)
 {
@@ -361,10 +360,10 @@ void moveToTargetPosOptimally(stepper_struct* current_stepper)
 		
 		steps_to_move = current_stepper->target_step_number - current_stepper->current_step_number;
 		abs_steps_to_move = abs(steps_to_move);
-		if (abs_steps_to_move > HALF_OF_STEPS_PER_REVOLUTION){
+		if (abs_steps_to_move > (current_stepper->steps_per_revolution/2)){
 			//steps_to_move = -(STEPS_PER_REVOLUTION - abs_steps_to_move);
-			if (steps_to_move >= 0) steps_to_move = -(STEPS_PER_REVOLUTION - abs_steps_to_move);
-			else steps_to_move = STEPS_PER_REVOLUTION - abs_steps_to_move;
+			if (steps_to_move >= 0) steps_to_move = -(current_stepper->steps_per_revolution - abs_steps_to_move);
+			else steps_to_move = current_stepper->steps_per_revolution - abs_steps_to_move;
 		}
 
 		if (steps_to_move == 0) break;
@@ -413,11 +412,11 @@ void moveToTargetPosOptimally(stepper_struct* current_stepper)
 		while(TIM3_update_flag != 1);
 		TIM_Cmd(TIM3, DISABLE);
 		
-		if (current_stepper->current_step_number > HALF_OF_STEPS_PER_REVOLUTION){
-			current_stepper->current_step_number = -(HALF_OF_STEPS_PER_REVOLUTION-1);
+		if (current_stepper->current_step_number > (current_stepper->steps_per_revolution/2)){
+			current_stepper->current_step_number = -((current_stepper->steps_per_revolution/2)-1);
 		}
-		if (current_stepper->current_step_number < -(HALF_OF_STEPS_PER_REVOLUTION-1)){
-			current_stepper->current_step_number = HALF_OF_STEPS_PER_REVOLUTION;
+		if (current_stepper->current_step_number < -((current_stepper->steps_per_revolution/2)-1)){
+			current_stepper->current_step_number = (current_stepper->steps_per_revolution/2);
 		}
 		
 	}	// end of while loop - step to target.
@@ -439,13 +438,13 @@ void moveToTargetPosOptimally(stepper_struct* current_stepper)
 }
 
 // set home position
-void setHomePosition(stepper_struct* current_stepper)
+void setHomePos(stepper_struct* current_stepper)
 {
-	current_stepper->home_position = 0;
+	current_stepper->current_step_number = 0;
 }
 
 // move to home position
-void moveToHomePosition(stepper_struct* current_stepper)
+void moveToHomePos(stepper_struct* current_stepper)
 {
 	if (current_stepper->current_step_number > 0){
 		step(current_stepper, - current_stepper->current_step_number);
@@ -457,13 +456,13 @@ void moveToHomePosition(stepper_struct* current_stepper)
 
 /* convert angle to pulses - relative to stepper motor defines
  * in: degres; max=429000 (=about 1193 rotations if no external gear is used and motor is: 28YBJ-48)
- * uses STEPS_PER_REVOLUTION - including external gear ratio!!!
+ * relative to stepper steps_per_revolution. 
 */ 
-int32_t angleToPulses(int32_t angle)
+int32_t angleToPulses(stepper_struct* current_stepper, int32_t angle)
 {
-	float angle_per_pulse = 360*10000 / STEPS_PER_REVOLUTION;	//single pulse is  __ degrees
-	float pulses = angle / (angle_per_pulse/ 10000) ;
-	return (int32_t)pulses;
+	int32_t angle_per_pulse = 360*10000 / current_stepper->steps_per_revolution;	//single pulse is  __ degrees
+	int32_t pulses = angle*10000 / angle_per_pulse;		// */ 10000 - to avoid calculating with floats 
+	return pulses;
 }
 
 /*
@@ -572,3 +571,4 @@ void stepMotor(stepper_struct* current_stepper, int this_step)
     } 
   }
 }
+
