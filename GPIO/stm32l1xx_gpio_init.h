@@ -25,7 +25,7 @@
   extern "C" {
 #endif
 
-void gpio_pinSetup(GPIO_TypeDef* GPIOx,	uint32_t pinNumber, uint32_t pinMode,	uint8_t pinType, uint8_t pinPull,	uint8_t pinSpeed);
+void gpio_pinSetup(GPIO_TypeDef* GPIOx,	uint32_t pinNumber, GPIOMode_TypeDef pinMode, GPIOOType_TypeDef pinType, GPIOPuPd_TypeDef pinPull, GPIOSpeed_TypeDef pinSpeed);
 void gpio_pinSetup_AF(GPIO_TypeDef* GPIOx, uint32_t pinNumber, uint8_t GPIO_AF, GPIOOType_TypeDef pinType, GPIOPuPd_TypeDef pinPull, GPIOSpeed_TypeDef pinSpeed);
 void gpio_pinSetup_interrupt(GPIO_TypeDef* GPIOx, uint32_t pinNumber, EXTITrigger_TypeDef EXTI_Trigger, uint8_t NVIC_IRQChannelPreemptionPriority, uint8_t NVIC_IRQChannelSubPriority);
 

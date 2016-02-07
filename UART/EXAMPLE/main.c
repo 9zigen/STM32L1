@@ -49,7 +49,7 @@ void USART1_IRQHandler(){
 		
 		// Receive the character
 		if(USART_ReceiveData(USART1) == 'x'){			
-			printStringLn("gnoj na kubik");    
+			printStringLn("uart in interrupt");    
 		} 
 	}
 }

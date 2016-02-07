@@ -1,9 +1,9 @@
  /*
  ===============================================================================
             ##### STM32L1-discovery board: GPIO custom functions#####
-																	c file
+									c file
  ===============================================================================
- * @date    12-Nov-2014
+ * @date    5-Feb-2016
  * @author  Domen Jurkovic
  *
  */
@@ -21,7 +21,7 @@
 	
 	gpio_pinSetup(GPIOC, GPIO_Pin_9, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_NOPULL, GPIO_Speed_40MHz);
 */
-void gpio_pinSetup(GPIO_TypeDef* GPIOx,	uint32_t pinNumber, uint32_t pinMode,	uint8_t pinType, uint8_t pinPull,	uint8_t pinSpeed)
+void gpio_pinSetup(GPIO_TypeDef* GPIOx,	uint32_t pinNumber, GPIOMode_TypeDef pinMode, GPIOOType_TypeDef pinType, GPIOPuPd_TypeDef pinPull, GPIOSpeed_TypeDef pinSpeed)
 {
 	GPIO_InitTypeDef GPIO_setup;
 	/* Check the parameters */
@@ -64,10 +64,10 @@ void gpio_pinSetup(GPIO_TypeDef* GPIOx,	uint32_t pinNumber, uint32_t pinMode,	ui
 	}
 	
 	GPIO_setup.GPIO_Pin		=	pinNumber;
-	GPIO_setup.GPIO_Mode 	=	(GPIOMode_TypeDef) pinMode;
-	GPIO_setup.GPIO_OType 	=	(GPIOOType_TypeDef) pinType;
-	GPIO_setup.GPIO_PuPd 	=	(GPIOPuPd_TypeDef) pinPull;
-	GPIO_setup.GPIO_Speed 	= (GPIOSpeed_TypeDef) pinSpeed;
+	GPIO_setup.GPIO_Mode 	= pinMode;
+	GPIO_setup.GPIO_OType 	= pinType;
+	GPIO_setup.GPIO_PuPd 	= pinPull;
+	GPIO_setup.GPIO_Speed 	= pinSpeed;
 	GPIO_Init(GPIOx, &GPIO_setup);
 }
 
