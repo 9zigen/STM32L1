@@ -24,9 +24,7 @@
 void gpio_pinSetup(GPIO_TypeDef* GPIOx,	uint32_t pinNumber, GPIOMode_TypeDef pinMode, GPIOOType_TypeDef pinType, GPIOPuPd_TypeDef pinPull, GPIOSpeed_TypeDef pinSpeed)
 {
 	GPIO_InitTypeDef GPIO_setup;
-	/* Check the parameters */
-	assert_param(IS_GPIO_ALL_PERIPH(GPIOx));
-
+	
 	if(GPIOx == GPIOA)
 	{
 		RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
