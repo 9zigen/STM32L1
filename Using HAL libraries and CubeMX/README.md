@@ -33,4 +33,12 @@ Example:
 4. Delay us
 Microsecond delay. Not really accurate delay, but good enough for simple tasks, like LCD driver.
 
+5. Button handler
+Polling button handler. It can register pressed buton, long press and buton release.
+Example:
+	- buttonInit(&S1_struct, S1_GPIO_Port, S1_Pin, GPIO_PIN_RESET, 30, 2000);
+	- if(buttonUpdate(&S1_struct) == isPressed){
+		// button was/is pressed
+		}	
+	
 
