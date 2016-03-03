@@ -13,7 +13,7 @@ This driver is written to be used with CubeMX.
 	1.d: Name this pin as ENC1_B
 		Note: if you are using multiple rotary encoders, name this pins as ENC1_B, ENC2_B, ENC3_B, ...
 
-2. In CubeMX set interrupts ant their priorities:
+2. In CubeMX set interrupts and their priorities:
 	2.a: In Configuration navigate to GPIO and set all ENCx_A pins:
 		GPIO mode: External Interrupt Mode with Rising/Falling edge trigger detection
 	2.b: Set pull-up and pull-down resistors according to your hardware. 
@@ -78,23 +78,22 @@ void Encoder_SetIncDir(rot_enc_data_t* rot_enc_data, rot_enc_inc_dir_t rot_enc_d
 /*
 	Returns difference from the last time this function was called.
 	Difference is than reseted.
-	Absoulte value is incremented/decremented by difference value, except if Encoder_SetAbsToZero() was used before. 
 */
 int32_t Encoder_GetState(rot_enc_data_t* rot_enc_data){
 	int32_t difference = rot_enc_data->diff_rot;
-	
-	if(rot_enc_data->_manual_reset == 1){
-		rot_enc_data->diff_rot = 0;
-		rot_enc_data->_manual_reset = 0;
-	}
-	else{
-		rot_enc_data->abs_rot += rot_enc_data->diff_rot;
-		rot_enc_data->diff_rot = 0;
-	}
-	
+
+	rot_enc_data->diff_rot = 0;
 	return difference;
 }
 
+/*
+	Set current rotary encoder position to zero. 
+	A change in encoder position is calculated from zero.
+*/
+void Encoder_SetAbsToZero(rot_enc_data_t* rot_enc_data){
+	rot_enc_data->diff_rot = - rot_enc_data->abs_rot;
+	rot_enc_data->abs_rot = 0;
+}
 
 /*
 	This function should be called in pin A interrupt routine.
@@ -115,30 +114,23 @@ void Encoder_CalculateData(rot_enc_data_t* rot_enc_data){
 			if (current_B_pin_state == 1){
 				if (rot_enc_data->inc_dir == rot_enc_inc_cw){	// Increment mode
 					rot_enc_data->diff_rot--;
+					rot_enc_data->abs_rot--;
 				}
 				else{
 					rot_enc_data->diff_rot++;
+					rot_enc_data->abs_rot++;
 				}
 			}
 			else{
 				if (rot_enc_data->inc_dir == rot_enc_inc_cw){	// Increment mode
 					rot_enc_data->diff_rot++;
+					rot_enc_data->abs_rot++;
 				}
 				else{
 					rot_enc_data->diff_rot--;
+					rot_enc_data->abs_rot--;
 				}
 			}
 		}
 	}
 }
-
-/*
-	Set current rotary encoder position to zero. 
-	A change in encoder position is calculated from zero.
-*/
-void Encoder_SetAbsToZero(rot_enc_data_t* rot_enc_data){
-	rot_enc_data->diff_rot = - rot_enc_data->abs_rot;
-	rot_enc_data->abs_rot = 0;
-	rot_enc_data->_manual_reset = 1;
-}
-

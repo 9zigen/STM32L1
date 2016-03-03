@@ -2,9 +2,37 @@
  ===============================================================================
  LCD HD44780 driver: c file
  ===============================================================================
- * @date    2-Feb-2016
+ * @date    28-Feb-2016
  * @author  Domen Jurkovic
-  
+ * @version v1.1
+ 
+	1. Set up library:
+		1.1. Set up pins using HAL library or CubeMX. See pin naming in header file.
+		1.2. Set up (comment/uncomment) defines in header file
+	
+	2. Init library:
+		LCD_Init(2, 20);	// 2 rows, 20 characters
+	
+	3. Print characters/strings/numbers:
+		LCD_PrintString(1, 1, "www.damogranlabs.com ");
+		LCD_PrintStringWindow(1, 1, 10, 350, "Find us on github and www.damogranlabs.com ");
+		LCD_PrintNumber(2, 1, -10);
+		LCD_PrintFloat(2, 1, -326.5635, 5);
+		
+	3.1 Check header file for more functions. 
+	
+	3.2. Create & print custom characters
+		uint8_t damogranlabs_logo[]={
+			0x0F,
+			0x13,
+			0x11,
+			0x11,
+			0x0e,
+			0x00,
+			0x00		
+		};
+		LCD_CreateChar(0, damogranlabs_logo); 
+		LCD_PutCustom(2, 10, 0);
  */
 
 #include "stm32l1xx_hal_liquid_crystal.h"
@@ -70,6 +98,9 @@ void LCD_Init(uint8_t rows, uint8_t cols) {
 	*str: pointer to string to display
  */
 void LCD_PrintString(uint8_t y, uint8_t x, char* str) {
+	#ifndef START_X_Y_WITH_0
+	x--; y--;
+	#endif
 	_lcd_cursor_set(y, x);
 	while (*str) {
 		#ifdef GO_TO_NEW_LINE_IF_STRING_TOO_LONG
@@ -104,6 +135,61 @@ void LCD_PrintString(uint8_t y, uint8_t x, char* str) {
 	}
 }
 
+
+/*
+	Print string and scroll it (right to left) on LCD in specific window size. 
+*/
+void LCD_PrintStringWindow(uint8_t y, uint8_t x, uint8_t window_size, uint16_t speed_ms, char* str){
+	#ifndef START_X_Y_WITH_0
+	x--; y--;
+	#endif
+	
+	uint8_t _window_character_number = 0;
+	uint8_t string_length = strlen(str); // number of characters in passed string
+	uint8_t _str_character_number = 0;	// 0 - strlen(str)
+	char* _str = str;
+	
+	_lcd_cursor_set(y, x);
+	
+	
+	if(string_length > window_size){	// string is larger than window size. String must be scrolled 
+		
+		// write character while they are inside window size
+		while(_str_character_number < window_size){	
+			_lcd_send_data(*_str);
+			
+			_lcd_options.currentX++;
+			_str_character_number++;
+			_str++;
+		}
+		HAL_Delay(WINDOW_PRINT_DELAY);
+			
+		_str_character_number = 0;
+		_str = str++;	// increment starting character
+		
+		// scroll characters in window until last x characters can be shown in window
+		while((string_length - _str_character_number) >= window_size){
+			_window_character_number = 0;	// reset character position in window.
+			_lcd_cursor_set(y, x);
+						
+			while(_window_character_number < window_size){				// while character number is smaller than window size
+				_lcd_send_data(*_str);	// print character
+				_lcd_options.currentX++;	// increment x position
+				_window_character_number++;	// increment position in window
+				_str++;	// increment starting character
+			}
+			
+			_str = str++;	// increment starting character
+			_str_character_number++;
+			
+			HAL_Delay(speed_ms);
+		}
+	}
+	else{	// string is smaller than window size. Print it normally.
+		LCD_PrintString(y, x, str);
+	}
+}
+
 /*
 	Print number on lcd
 	y location (row)	
@@ -111,31 +197,9 @@ void LCD_PrintString(uint8_t y, uint8_t x, char* str) {
 	number = in32_t (range: -2147483647 to 2147483647)
  */
 void LCD_PrintNumber(uint8_t y, uint8_t x, int32_t number){
-	char buf[3*sizeof(number)+1];		// emty 8-bit buffer with size of 3*int32_t number; max 12 characters, including minus; + ending character
-	char *str = &buf[sizeof(buf)-1];	// pointer on buffer address of the last byte
-	uint32_t _number;
-	char c;
-	*str = '\0';
-	
-	if(number < 0){
-		LCD_PrintString(y, x, "-");
-		x++;
-		number = -number;
-	}
-	
-	do{
-		_number = number;
-		number /= 10;
-		c = _number - 10 * number;	// residue
-		str--;
-		if(c < 10){
-			*str = c + '0';
-		}
-		else{
-			*str = c + 'A' - 10;
-		}
-	} while(number);
-	LCD_PrintString(y, x, str);
+	char buf[50];
+  snprintf (buf, 100, "%d", number);
+	LCD_PrintString(y, x, buf);
 }
 
 /*
@@ -144,42 +208,24 @@ void LCD_PrintNumber(uint8_t y, uint8_t x, int32_t number){
 	x location (col)
 	number = float (range: -2147483647 to 2147483647)
  */
-void LCD_PrintFloat(uint8_t y, uint8_t x, float number_f){
-	int32_t integer_part = (int32_t) number_f;
-	float decimal_part = (number_f - (float)integer_part) * 10000;
-		
-	if((integer_part == 0) && (decimal_part < 0)){
-		LCD_PrintString(y, x, "-");
-		x++;
-	}
-	LCD_PrintNumber(y, x, integer_part);
-	x = _lcd_options.currentX++;
-	LCD_PrintString(y, x, ".");
-	x = _lcd_options.currentX++;
-	
-	
-	if(decimal_part < 0){
-		decimal_part = -decimal_part;
-	}
-	if(decimal_part < 1000){
-		
-		if(decimal_part < 100){
-			LCD_PrintNumber(y, x, 0); 
-			x = _lcd_options.currentX++;
-		}
-		if(decimal_part < 10){
-			LCD_PrintNumber(y, x, 0); 
-			x = _lcd_options.currentX++;
-		}
-		LCD_PrintNumber(y, x, 0); 
-		x = _lcd_options.currentX++;
-	}
-	LCD_PrintNumber(y, x, (uint32_t)decimal_part); 
+void LCD_PrintFloat(uint8_t y, uint8_t x, float number_f, uint8_t precision){
+	char buf[50];
+  snprintf ( buf, 100, "%.*g", precision, number_f);
+	LCD_PrintString(y, x, buf);
 }
 
 void LCD_Clear(void) {
 	_lcd_send_command(LCD_CLEARDISPLAY);
 	HAL_Delay(3);
+}
+
+void LCD_ClearArea(uint8_t y, uint8_t x_start, uint8_t x_end){
+	uint8_t x = x_start;
+	while(x <= x_end){
+		LCD_PrintString(y, x, " ");
+		x++;
+	}
+	
 }
 
 void LCD_DisplayOn(void) {
@@ -232,6 +278,10 @@ void LCD_CreateChar(uint8_t location, uint8_t *data) {
 }
 
 void LCD_PutCustom(uint8_t y, uint8_t x, uint8_t location) {
+	#ifndef START_X_Y_WITH_0
+	x--; y--;
+	#endif
+	
 	_lcd_cursor_set(y, x);
 	_lcd_send_data(location);
 }
@@ -269,7 +319,7 @@ void _lcd_send_command_4_bit(uint8_t cmd) {
 
 void _lcd_cursor_set(uint8_t row, uint8_t col){
 	uint8_t row_offsets[] = {0x00, 0x40, 0x14, 0x54};
-	
+		
 	/* Go to beginning */
 	if (row >= _lcd_options.Rows) {
 		row = 0;

@@ -1,10 +1,10 @@
- /*
+/*
  ===============================================================================
- LCD HD44780 driver: header file
+ LCD HD44780 driver: c file
  ===============================================================================
- * @date    2-Feb-2016
+ * @date    28-Feb-2016
  * @author  Domen Jurkovic
-	To use with HD44780 driver LCDs
+ * @version v1.1
   
  */
 #ifndef __LCD_H
@@ -15,8 +15,15 @@
 #include "stm32l1xx_hal_gpio.h"
 
 #include "math.h"
+#include "string.h"
+#include "stdio.h"
 
 #include "stm32l1xx_hal_delay_us.h"
+
+/********************************* USER SETUP DEFINES **************************************/
+//#define START_X_Y_WITH_0	// uncomment if first row/column is numbered as zero
+//#define GO_TO_NEW_LINE_IF_STRING_TOO_LONG	// uncomment if strings larger than screen size should break and continue on new line.
+#define WINDOW_PRINT_DELAY	350	// delay between static view and window scrolling (used in LCD_PrintStringWindow();)
 
 // If LCD_CubeMX defined, LCD driver uses CubeMX assigned pins. In this case, pins should be named:
 /* LCD_RS - register select pin */
@@ -25,7 +32,7 @@
 /* LCD_D5 - data pin 5 */
 /* LCD_D6 - data pin 6 */
 /* LCD_D7 - data pin 7 */
-#define	LCD_CubeMX
+//#define	LCD_CubeMX
 
 #ifdef LCD_CubeMX
 	#include "mxconstants.h"
@@ -53,14 +60,12 @@
 		
 	/* enable clocks to all ports. Add/delete unused */
 	#define LCD_RCC_ENABLE()		do{ \
-										__GPIOB_CLK_ENABLE(); \
-										__GPIOC_CLK_ENABLE();	\
-									}while(0)
+																	__GPIOB_CLK_ENABLE(); \
+																	__GPIOC_CLK_ENABLE();	\
+																}while(0)
 #endif
-
-//#define GO_TO_NEW_LINE_IF_STRING_TOO_LONG
-
-/*************************************************************************************************/
+																
+/********************************* PRIVATE DEFINES **************************************/
 /* Commands*/
 #define LCD_CLEARDISPLAY        0x01
 #define LCD_RETURNHOME          0x02
@@ -106,15 +111,21 @@ typedef struct {
 	uint8_t currentY;
 } _lcd_options_t;		// private LCD structure
 
-
+/*
+	Initializes LCD (HD44780)
+	rows: height of lcd
+	cols: width of lcd
+*/
 void LCD_Init(uint8_t rows, uint8_t cols);
 void LCD_PrintString(uint8_t y, uint8_t x, char* str);
+void LCD_PrintStringWindow(uint8_t y, uint8_t x, uint8_t window_size, uint16_t speed_ms, char* str);
 void LCD_PrintNumber(uint8_t y, uint8_t x, int32_t number);
-void LCD_PrintFloat(uint8_t y, uint8_t x, float number_f);
+void LCD_PrintFloat(uint8_t y, uint8_t x, float number_f, uint8_t precision);
 
 void LCD_DisplayOn(void);
 void LCD_DisplayOff(void);
 void LCD_Clear(void);
+void LCD_ClearArea(uint8_t y, uint8_t x_start, uint8_t x_end);
 void LCD_BlinkOn(void);
 void LCD_BlinkOff(void);
 void LCD_CursorOn(void);

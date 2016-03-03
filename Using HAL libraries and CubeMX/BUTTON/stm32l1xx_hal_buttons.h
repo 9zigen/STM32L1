@@ -2,7 +2,7 @@
  ===============================================================================
  Button driver: header file
  ===============================================================================
- * @date    16-Feb-2016
+ * @date    27-Feb-2016
  * @author  Domen Jurkovic
   
  */
@@ -42,6 +42,8 @@ typedef struct{
 	button_state_t _state;		// could be set to noEvent on case we are waiting for key to be released.
 	uint32_t debounce_time;
 	uint32_t long_press_time;
+	uint8_t short_press_handled;
+	uint8_t long_press_handled;
 	
 	uint8_t _state_changed;
 	_phy_state_t _previous_state;
@@ -50,6 +52,9 @@ typedef struct{
 
 void buttonInit(button_struct_t *button_struct, GPIO_TypeDef* GPIO_Port, uint32_t GPIO_Pin, GPIO_PinState active_state, uint32_t debounce_time, uint32_t long_press_time);
 button_state_t buttonUpdate(button_struct_t *button_struct);
+
+uint8_t buttonSinglePress(button_struct_t *button_struct);
+uint8_t buttonSingleLongPress(button_struct_t *button_struct);
 
 /**********************************************************/
 /*	PRIVATE FUNCTIONS */

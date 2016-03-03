@@ -94,30 +94,29 @@ void Encoder_Init(rot_enc_data_t* rot_enc_data, GPIO_TypeDef* rot_enc_gpio_A_por
 /*
 	Set increment direction to CW or CCW
 */	
-void Encoder_SetIncDir(rot_enc_data_t* rot_enc_data, rot_enc_inc_dir_t rot_enc_direction) {
+void Encoder_SetIncDir(rot_enc_data_t* rot_enc_data, rot_enc_inc_dir_t rot_enc_direction){
 	rot_enc_data->inc_dir = rot_enc_direction;
 }
 
 /*
 	Returns difference from the last time this function was called.
 	Difference is than reseted.
-	Absoulte value is incremented/decremented by difference value, except if Encoder_SetAbsToZero() was used before. 
 */
 int32_t Encoder_GetState(rot_enc_data_t* rot_enc_data){
 	int32_t difference = rot_enc_data->diff_rot;
-	
-	if(rot_enc_data->_manual_reset == 1){
-		rot_enc_data->diff_rot = 0;
-		rot_enc_data->_manual_reset = 0;
-	}
-	else{
-		rot_enc_data->abs_rot += rot_enc_data->diff_rot;
-		rot_enc_data->diff_rot = 0;
-	}
-	
+
+	rot_enc_data->diff_rot = 0;
 	return difference;
 }
 
+/*
+	Set current rotary encoder position to zero. 
+	A change in encoder position is calculated from zero.
+*/
+void Encoder_SetAbsToZero(rot_enc_data_t* rot_enc_data){
+	rot_enc_data->diff_rot = - rot_enc_data->abs_rot;
+	rot_enc_data->abs_rot = 0;
+}
 
 /*
 	This function should be called in pin A interrupt routine.
@@ -138,30 +137,24 @@ void Encoder_CalculateData(rot_enc_data_t* rot_enc_data){
 			if (current_B_pin_state == 1){
 				if (rot_enc_data->inc_dir == rot_enc_inc_cw){	// Increment mode
 					rot_enc_data->diff_rot--;
+					rot_enc_data->abs_rot--;
 				}
 				else{
 					rot_enc_data->diff_rot++;
+					rot_enc_data->abs_rot++;
 				}
 			}
 			else{
 				if (rot_enc_data->inc_dir == rot_enc_inc_cw){	// Increment mode
 					rot_enc_data->diff_rot++;
+					rot_enc_data->abs_rot++;
 				}
 				else{
 					rot_enc_data->diff_rot--;
+					rot_enc_data->abs_rot--;
 				}
 			}
 		}
 	}
-}
-
-/*
-	Set current rotary encoder position to zero. 
-	A change in encoder position is calculated from zero.
-*/
-void Encoder_SetAbsToZero(rot_enc_data_t* rot_enc_data){
-	rot_enc_data->diff_rot = - rot_enc_data->abs_rot;
-	rot_enc_data->abs_rot = 0;
-	rot_enc_data->_manual_reset = 1;
 }
 

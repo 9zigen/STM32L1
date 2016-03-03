@@ -22,9 +22,7 @@ typedef struct {
 	int32_t diff_rot;							//  Difference in rotation from last check
 		
 	//private
-	uint8_t _last_pin_A_status;		//  Last state of pin A
-	uint8_t _manual_reset;				//  Flag if Encoder_SetAbsToZero() was called
-	
+	uint8_t _last_pin_A_status;		//  Last state of pin A	
 } rot_enc_data_t;
 
 void Encoder_Init(rot_enc_data_t* rot_enc_data, GPIO_TypeDef* rot_enc_gpio_A_port, uint16_t rot_enc_gpio_A_pin, GPIO_TypeDef* rot_enc_gpio_B_port, uint16_t rot_enc_gpio_B_pin);

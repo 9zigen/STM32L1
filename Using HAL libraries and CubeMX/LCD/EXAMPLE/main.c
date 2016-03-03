@@ -36,7 +36,6 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN Includes */
-#include "stm32l1xx_hal_uart_print.h"
 #include "stm32l1xx_hal_delay_us.h"
 #include "stm32l1xx_hal_liquid_crystal.h"
 
@@ -66,7 +65,15 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+	uint8_t damogranlabs_logo[]={
+		0x0F,
+		0x13,
+		0x11,
+		0x11,
+		0x0e,
+		0x00,
+		0x00		
+	};
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -83,19 +90,31 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 	LCD_Init(2, 20);
+	LCD_CreateChar(0, damogranlabs_logo); 
 	
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	LCD_PrintString(2, 1, "n: ");
+	LCD_PrintNumber(2, 4, -10);
 	
-	LCD_PrintString(0, 0, "HAL LCD library");
-	LCD_PrintString(1, 0, "damogranlabs.com");
-  while (1)
+	LCD_PrintString(2, 10, "f: ");
+	LCD_PrintFloat(2, 13, -326.5635, 5);
+	
+	while (1)
   {
+		LCD_PrintStringWindow(1, 3, 14, 350, "Find us on github and www.damogranlabs.com");
+		LCD_Clear();
+		LCD_PrintString(1, 1, "www.damogranlabs.com");
+		LCD_PutCustom(2, 10, 0);
+		LCD_ClearArea(1, 5, 12); 
 		HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
-		HAL_Delay(1000);
-		/* USER CODE END WHILE */
+		HAL_Delay(2000);
+		
+		
+		
+				/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
   }
